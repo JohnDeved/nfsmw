@@ -27,18 +27,18 @@ Use the repo-local helper before doing a style pass:
 python tools/code_style.py audit --base origin/main
 ```
 
-- `audit` classifies changed files into safe vs match-sensitive buckets and reports repo-specific findings.
+- `audit` classifies changed files into default-format vs match-sensitive buckets and reports repo-specific findings.
 - `audit` also checks touched `class` / `struct` declarations against known header declarations and, when no header exists, against the PS2 visibility rule.
 - `audit` warns on touched local forward declarations when the repo already has a header for that type.
 - `audit` warns on touched type members that look like invented padding or placeholder names such as `pad`, `unk`, or `field_1234`.
 - `audit` also checks touched style-guide rules that clang-format cannot enforce for you, such as cast spacing, `using namespace`, `NULL`, and missing `EA_PRAGMA_ONCE_SUPPORTED` guard blocks when a header's guard region is touched.
 - `audit` groups repeated findings by file so branch-wide output stays readable.
-- Use `audit --category safe-cpp` for frontend/support cleanup passes and `audit --category match-sensitive-cpp` when you want a conservative review queue for decomp code.
-- `format --check` is an opt-in wrapper around the repo's `.clang-format`, but it only targets safe C/C++ files by default.
+- Use `audit --category safe-cpp` for the tool's intentionally tiny Frontend/FEng default-format bucket and `audit --category match-sensitive-cpp` when you want a conservative review queue for decomp code.
+- `format --check` is an opt-in wrapper around the repo's `.clang-format`, but it only targets the tool's default allowlisted C/C++ files by default.
 - Use `format --check --base origin/main --category safe-cpp` when you want a branch-level formatter probe instead of spelling every file path out.
-- `format --check` labels whitespace-only formatter output separately from more invasive changes such as include reordering.
+- `format --check` labels whitespace-only formatter output separately from other non-whitespace changes.
 - `format` never targets `SourceLists/z*.cpp`; those files stay audit-only even when you opt into risky formatting.
-- `format` skips files that use initializer-list guard comments (`//`) unless you explicitly override that, because clang-format fights this repo-specific convention.
+- `format` skips files that use initializer-list guard comments (`//`) unless you explicitly override that, because clang-format fights this repo-specific layout convention.
 - `clang-format` itself is optional. If it is not on `PATH`, install it locally or point the helper at it with `CLANG_FORMAT=/path/to/clang-format`.
 - Do not pass `--include-match-sensitive` unless you are deliberately taking on verification work afterwards.
 
@@ -56,7 +56,7 @@ Examples:
 
 For these files, style cleanup must be conservative and verified.
 
-### 1b. Safer support / frontend / tooling code
+### 1b. Default-format support / frontend / tooling code
 
 Examples:
 
@@ -93,12 +93,14 @@ Foo::Foo()
 - Spell casts without spaces inside the angle brackets: `static_cast<Type *>(expr)`, not `static_cast< Type * >(expr)`.
 - Use `nullptr` exclusively for null pointers.
 - Prefer `if (ptr)` / `if (!ptr)` over explicit null comparisons when the change is local and verified safe.
+- When a match-sensitive TU has many explicit `nullptr` checks and you decide to normalize them, prefer one mechanical full-TU pass over piecemeal cleanup. Rebuild the unit and re-check its status before keeping the rewrite.
 - Inline assembly is acceptable when it is needed to preserve dead-code compares, ordering, or other compiler behavior that source alone cannot reproduce.
 
 ### Forward declarations and local prototypes
 
 - Prefer including the owning repo header over adding a local forward declaration for a project type.
 - If the repo already has a header declaration/definition for a type, include that header instead of redeclaring the type locally.
+- If the repo only has an empty or stub owner header, and line info / surrounding source clearly points at that header's subsystem, prefer populating that owner header over leaving a recovered project type declaration inside a `.cpp`.
 - Only keep a local forward declaration when no canonical repo header exists yet and you have verified that the ownership is still unresolved.
 - Prefer moving helper template declarations next to their real use site instead of leaving them in an unrelated file.
 

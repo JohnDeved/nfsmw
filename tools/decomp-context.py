@@ -25,6 +25,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 from _common import (
+    RELOC_DIFF_CHOICES,
     ROOT_DIR,
     RELOC_DIFF_CHOICES,
     ToolError,

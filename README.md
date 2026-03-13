@@ -40,23 +40,13 @@ When running under WSL, [objdiff](#diffing) is unable to get filesystem notifica
   brew install ninja
   ```
 
-- Install [wine-crossover](https://github.com/Gcenx/homebrew-wine):
-
-  ```sh
-  brew install --cask --no-quarantine gcenx/wine/wine-crossover
-  ```
-
-After OS upgrades, if macOS complains about `Wine Crossover.app` being unverified, you can unquarantine it using:
-
-```sh
-sudo xattr -rd com.apple.quarantine '/Applications/Wine Crossover.app'
-```
+[wibo](https://github.com/decompals/wibo), a minimal 32-bit Windows binary wrapper, will be automatically downloaded and used.
 
 ## Linux
 
 - Install [ninja](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages).
-- For non-x86(\_64) platforms: Install wine from your package manager.
-  - For x86(\_64), [wibo](https://github.com/decompals/wibo), a minimal 32-bit Windows binary wrapper, will be automatically downloaded and used.
+
+[wibo](https://github.com/decompals/wibo), a minimal 32-bit Windows binary wrapper, will be automatically downloaded and used.
 
 # Building
 
@@ -112,34 +102,16 @@ sudo xattr -rd com.apple.quarantine '/Applications/Wine Crossover.app'
   `build/`. It intentionally does **not** share `build.ninja`,
   `objdiff.json`, `compile_commands.json`, or per-worktree object outputs.
 
-  After linking shared assets into a worktree, regenerate that worktree's local build
-  files with:
+  After creating a fresh worktree, bootstrap its local generated files with:
 
   ```sh
-  python configure.py
+  python tools/share_worktree_assets.py bootstrap
   ```
 
-- Sharing large assets across git worktrees
-
-  If you use multiple git worktrees, you can deduplicate the large immutable inputs
-  and downloaded tool binaries while keeping each worktree's generated build files
-  separate:
-
-  ```sh
-  python tools/share_worktree_assets.py link --all
-  ```
-
-  This shares the ignored debug/tool assets under the git common directory, including
-  extracted `orig/*` contents, `symbols/*`, root ELF / MAP files, and downloaded
-  tool binaries under `build/`. It intentionally does **not** share `build.ninja`,
-  `objdiff.json`, `compile_commands.json`, or per-worktree object outputs.
-
-  After linking shared assets into a worktree, regenerate that worktree's local build
-  files with:
-
-  ```sh
-  python configure.py
-  ```
+  `bootstrap` links the shared assets for the current worktree, runs `configure.py`,
+  generates the local split config when needed, and reruns `configure.py` so fresh
+  worktrees end up with `build.ninja`, `objdiff.json`, and `compile_commands.json`
+  without manual copying.
 
 # Diffing
 
@@ -305,10 +277,10 @@ If you have `clang-format` installed locally, you can also use:
 python tools/code_style.py format --check src/Speed/Indep/Src/Frontend/FEManager.cpp
 ```
 
-The formatter wrapper only targets safer C/C++ files by default. It intentionally skips match-sensitive code unless you explicitly pass `--include-match-sensitive` and verify the affected unit afterwards.
+The formatter wrapper only targets a tiny default C/C++ bucket by default: currently `src/Speed/Indep/Src/Frontend/` and `src/Speed/Indep/Src/FEng/`. Nothing magical happens in those directories; they are just the initial low-churn UI-heavy areas chosen for branch-wide formatter probes, while the rest of `src/` stays opt-in because most of this repo is match-sensitive decomp code.
 `SourceLists/z*.cpp` files remain audit-only and are never formatter targets.
-`format --check` now distinguishes whitespace-only formatter deltas from more invasive output such as include reordering.
-Files that use the repo's initializer-list guard comments (`//`) are skipped by default because clang-format fights that convention; override only if you are deliberately inspecting that output.
+`format --check` now distinguishes whitespace-only formatter deltas from other non-whitespace output changes.
+Files that use the repo's initializer-list guard comments (`//`) are skipped by default because clang-format fights that convention by reflowing the guarded initializer layout. That is a source-layout concern, not a claim that whitespace by itself changes codegen; if you override it, verify the affected unit afterwards.
 For declaration-kind checks, header declarations are treated as the repo source of truth; otherwise the helper falls back to the PS2 dump rule (`public:` / `private:` / `protected:` means `class`, no visibility labels means `struct`).
 
 `clang-format` is optional. Recommended installs:

@@ -19,6 +19,7 @@ OBJDIFF_DEFAULT_CONFIG_ARGS = [
     "-c",
     "ppc.calculatePoolRelocations=false",
 ]
+RELOC_DIFF_CHOICES = ("none", "function", "data", "all")
 
 
 class ToolError(RuntimeError):
